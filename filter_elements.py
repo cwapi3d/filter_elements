@@ -3,12 +3,12 @@
 """filter_elements.py: searches elements for specific terms and activates them """
 
 __author__      = "Michael Brunner"
-__copyright__   = "Copyright 2021, Cadwork Holz AG"
+__copyright__   = "Copyright 2022, Cadwork Holz AG"
 __maintainer__  = "Michael Brunner"
 __email__       = "brunner@cadwork.swiss"
 __license__     = "MIT License Agreement"
 __version__     = "1.0"
-__status__      = "Testing"
+__status__      = "Release"
 
 #---------------------------------------------------------------
 
@@ -20,15 +20,10 @@ import      re
 import      visualization_controller   as vc
 import      tkinter
 import      tkinter.messagebox
+from        collections import defaultdict
 
 
-# global variables
-FIND_WORD  = uc.get_user_string("""Suchbegriff(e) eingeben (z.B. Beton, Holz, Lattung
-                                )""")
-
-#---------------------------------------------------------------
-
-def main():
+def main(message):
     
     active_element_ids  = ec.get_active_identifiable_element_ids()
     visible_element_ids = ec.get_visible_identifiable_element_ids()
@@ -37,7 +32,7 @@ def main():
     len_visible_element_ids = len(visible_element_ids)
     
     if len_active_element_ids != 0 and len_active_element_ids != len_visible_element_ids:
-        var :bool = uc.get_user_bool("Sollen nur aktive Elemente berücksichtigt werden?", True)
+        var :bool = uc.get_user_bool(message[1], True)
         if var:
             element_ids = active_element_ids
         else:
@@ -46,7 +41,7 @@ def main():
         element_ids = visible_element_ids
     
     if len(element_ids) == 0:
-        warning_msg('Es sind keine Elemente aktiv/sichtbar!')
+        warning_msg(message[0])
         exit()
  
     vc.set_inactive(element_ids)
@@ -57,7 +52,11 @@ def main():
 
     elements = list()
     
-    search = re.split(', |;|,|\s', FIND_WORD) 
+    find_word = uc.get_user_string(message[2])
+    if find_word == '':
+        exit(1)
+        
+    search = re.split(', |;|,|\s', find_word) 
     search = list(map(str.lower, search))
        
     for n, e in zip(names, element_ids):
@@ -67,18 +66,30 @@ def main():
             continue
     
     if not elements:
-        warning_msg("Namen nicht gefunden!")
-            
-            
+        warning_msg(message[3])
+                 
     uc.enable_auto_display_refresh()
     vc.set_active(elements)
-    info_msg(f"{len(elements)} Elemente gefunden")
+    info_msg(f"{len(elements)} {message[4]} ")
     
     return None
    
 
 #---------------------------------------------------------------
+def get_message_lang():
+    # language dictionary
+    language_dict = defaultdict(list)
+    language_dict['en'] = ['No elements are active/visible!', 'Should only active elements be considered?', 'Enter search term', 'Names not found', ' Elements found']
+    language_dict['de'] = ['Es sind keine Elemente aktiv/sichtbar!', 'Sollen nur aktive Elemente berücksichtigt werden?', 'Suchbegriff eingeben', 'Namen nicht gefunden!', ' Elemente gefunden']
+    language_dict['fr'] = ["Aucun élément n'est actif/visible !", 'Seuls les éléments actifs doivent-ils être pris en compte ?','Saisir un mot-clé', 'Noms non trouvés', ' Éléments trouvés']
 
+    if uc.get_language() == 'de':
+        return language_dict['de']
+    elif uc.get_language() == 'fr':
+        return language_dict['fr']
+    else:
+        return language_dict['en']
+    
 def warning_msg(message):
     root = tkinter.Tk()
     root.withdraw()
@@ -97,5 +108,5 @@ def get_name(element:int) -> str:
         
 
 if __name__ == '__main__':
-    main()
+    main(message=get_message_lang())
     
