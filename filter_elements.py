@@ -42,7 +42,7 @@ def main(message):
     
     if len(element_ids) == 0:
         warning_msg(message[0])
-        exit()
+        return
  
     vc.set_inactive(element_ids)
     
@@ -54,7 +54,7 @@ def main(message):
     
     find_word = uc.get_user_string(message[2])
     if find_word == '':
-        exit(1)
+        return
         
     search = re.split(', |;|,|\s', find_word) 
     search = list(map(str.lower, search))
@@ -82,11 +82,15 @@ def get_message_lang():
     language_dict['en'] = ['No elements are active/visible!', 'Should only active elements be considered?', 'Enter search term', 'Names not found', ' Elements found']
     language_dict['de'] = ['Es sind keine Elemente aktiv/sichtbar!', 'Sollen nur aktive Elemente berücksichtigt werden?', 'Suchbegriff eingeben', 'Namen nicht gefunden!', ' Elemente gefunden']
     language_dict['fr'] = ["Aucun élément n'est actif/visible !", 'Seuls les éléments actifs doivent-ils être pris en compte ?','Saisir un mot-clé', 'Noms non trouvés', ' Éléments trouvés']
+    language_dict['es'] = ['¡No hay elementos activos/visibles!', '¿Sólo se deben considerar los elementos activos?', 'Introduzca el término de búsqueda', 'Nombres no encontrados', ' Elementos encontrados']
 
-    if uc.get_language() == 'de':
+    language = uc.get_language()
+    if language == 'de':
         return language_dict['de']
-    elif uc.get_language() == 'fr':
+    elif language == 'fr':
         return language_dict['fr']
+    elif language == 'es':
+        return language_dict['es']
     else:
         return language_dict['en']
     
