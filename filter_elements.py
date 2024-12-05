@@ -11,18 +11,28 @@ __version__ = "1.0"
 __status__ = "Release"
 
 import dataclasses
+import os
 import sys
 from typing import List
 import logging
 import utility_controller as uc
 import element_controller as ec
-import cadwork as cw
 import attribute_controller as ac
 import re
 import visualization_controller as vc
 import tkinter
 import tkinter.messagebox
 from collections import defaultdict
+
+
+os.environ['PYTHONPATH'] = os.pathsep.join([
+    os.path.join(os.path.dirname(__file__), '.venv', 'Lib', 'site-packages'),
+    os.path.join(os.path.dirname(__file__), 'src'),
+    os.path.dirname(__file__),
+    os.path.join(uc.get_plugin_path()),
+])
+
+sys.path.extend(os.environ['PYTHONPATH'].split(os.pathsep))
 
 handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter("{asctime} {levelname}: {message}", "%d.%m.%Y %H:%M:%S", style="{")
@@ -33,18 +43,12 @@ logger.setLevel(logging.DEBUG)
 
 
 def main(message):
-    active_element_ids = ec.get_active_identifiable_element_ids()
-    visible_element_ids = ec.get_visible_identifiable_element_ids()
-
-    if list_is_empty(active_element_ids) and not list_length_identical(active_element_ids, visible_element_ids):
-        element_ids = get_elements_by_user_decision(active_element_ids, message, visible_element_ids)
-    else:
-        element_ids = visible_element_ids
+    element_ids = query_elements_to_filter(message)
 
     if list_is_empty(element_ids):
         return
 
-    set_elements_inactive_and_refresh_display(element_ids)
+    set_elements_state_inactive_and_refresh_display(element_ids)
     uc.disable_auto_display_refresh()
 
     names = get_element_names(element_ids)
@@ -79,6 +83,17 @@ def main(message):
     return None
 
 
+def query_elements_to_filter(message):
+    active_element_ids = ec.get_active_identifiable_element_ids()
+    visible_element_ids = ec.get_visible_identifiable_element_ids()
+    if (list_is_empty(active_element_ids) and
+            not list_length_identical(active_element_ids, visible_element_ids)):
+        element_ids = get_elements_by_user_decision(active_element_ids, message, visible_element_ids)
+    else:
+        element_ids = visible_element_ids
+    return element_ids
+
+
 def activate_matching_elements(elements):
     vc.set_active(elements)
 
@@ -87,7 +102,7 @@ def get_element_names(element_ids: List[int]):
     return list(map(get_name, element_ids))
 
 
-def set_elements_inactive_and_refresh_display(element_ids: List[int]):
+def set_elements_state_inactive_and_refresh_display(element_ids: List[int]):
     if not list_is_empty(element_ids):
         vc.set_inactive(element_ids)
 
