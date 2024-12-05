@@ -30,23 +30,16 @@ def main(message):
     visible_element_ids = ec.get_visible_identifiable_element_ids()
 
     if list_is_empty(active_element_ids) and not list_length_identical(active_element_ids, visible_element_ids):
-        var: bool = uc.get_user_bool(message[1], True)
-        if var:
-            element_ids = active_element_ids
-        else:
-            element_ids = visible_element_ids
+        element_ids = get_elements_by_user_decision(active_element_ids, message, visible_element_ids)
     else:
         element_ids = visible_element_ids
 
-    if len(element_ids) == 0:
-        warning_msg(message[0])
+    if list_is_empty(element_ids):
         return
 
-    vc.set_inactive(element_ids)
+    set_elements_inactive_and_refresh_display(element_ids)
 
-    uc.disable_auto_display_refresh()
-
-    names = list(map(get_name, element_ids))
+    names = get_element_names(element_ids)
 
     elements = list()
 
@@ -71,6 +64,22 @@ def main(message):
     info_msg(f"{len(elements)} {message[4]} ")
 
     return None
+
+
+def get_element_names(element_ids: List[int]):
+    return list(map(get_name, element_ids))
+
+
+def set_elements_inactive_and_refresh_display(element_ids: List[int]):
+    if not list_is_empty(element_ids):
+        vc.set_inactive(element_ids)
+        uc.disable_auto_display_refresh()
+
+
+def get_elements_by_user_decision(active_element_ids: List[int], message, visible_element_ids: List[int]):
+    var: bool = uc.get_user_bool(message[1], True)
+    element_ids = active_element_ids if var else visible_element_ids
+    return element_ids
 
 
 def list_is_empty(element_list: List[int]):
