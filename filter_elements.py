@@ -10,10 +10,10 @@ __license__ = "MIT License Agreement"
 __version__ = "1.0"
 __status__ = "Release"
 
+import dataclasses
+import sys
 from typing import List
-
-# ---------------------------------------------------------------
-
+import logging
 import utility_controller as uc
 import element_controller as ec
 import cadwork as cw
@@ -23,6 +23,13 @@ import visualization_controller as vc
 import tkinter
 import tkinter.messagebox
 from collections import defaultdict
+
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter("{asctime} {levelname}: {message}", "%d.%m.%Y %H:%M:%S", style="{")
+handler.setFormatter(formatter)
+logger = logging.getLogger(__file__)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
 def main(message):
@@ -38,6 +45,7 @@ def main(message):
         return
 
     set_elements_inactive_and_refresh_display(element_ids)
+    uc.disable_auto_display_refresh()
 
     names = get_element_names(element_ids)
 
@@ -50,6 +58,11 @@ def main(message):
     search = re.split(', |;|,|\s', find_word)
     search = list(map(str.lower, search))
 
+    elements_to_filter = FilterElements(element_ids).element_records
+    word_splitting_pattern = ', |;|,|\s'
+    name_filter = NameFilter(word_splitting_pattern, find_word, elements_to_filter)
+    results = name_filter.matching_results()
+
     for n, e in zip(names, element_ids):
         if any(x in n for x in search):
             elements.append(e)
@@ -60,10 +73,14 @@ def main(message):
         warning_msg(message[3])
 
     uc.enable_auto_display_refresh()
-    vc.set_active(elements)
+    activate_matching_elements(elements)
     info_msg(f"{len(elements)} {message[4]} ")
 
     return None
+
+
+def activate_matching_elements(elements):
+    vc.set_active(elements)
 
 
 def get_element_names(element_ids: List[int]):
@@ -73,7 +90,6 @@ def get_element_names(element_ids: List[int]):
 def set_elements_inactive_and_refresh_display(element_ids: List[int]):
     if not list_is_empty(element_ids):
         vc.set_inactive(element_ids)
-        uc.disable_auto_display_refresh()
 
 
 def get_elements_by_user_decision(active_element_ids: List[int], message, visible_element_ids: List[int]):
@@ -82,11 +98,59 @@ def get_elements_by_user_decision(active_element_ids: List[int], message, visibl
     return element_ids
 
 
+def strings_to_lower(strings: List[str]):
+    return list(map(lambda string: string.lower(), strings))
+
+
 def list_is_empty(element_list: List[int]):
     return len(element_list) == 0
 
+
 def list_length_identical(fst_element_list: List[int], snd_element_list: List[int]):
     return len(fst_element_list) == len(snd_element_list)
+
+
+@dataclasses.dataclass
+class ElementRecord:
+    element_id: int
+    name: str
+
+
+class FilterElements:
+    def __init__(self, elements: List[int]):
+        if len(elements) == 0:
+            raise Exception("Size elements must not be null")
+
+        self._element_records: List[ElementRecord] = self._create_records(elements)
+
+    @staticmethod
+    def _create_records(elements: List[int]) -> List[ElementRecord]:
+        return list(
+            map(lambda element_id: ElementRecord(element_id, ac.get_name(element_id)), elements))
+
+    @property
+    def element_records(self) -> List[ElementRecord]:
+        return self._element_records
+
+
+class NameFilter:
+    def __init__(self, pattern, words_to_find: str, elements: List[ElementRecord]):
+        if len(pattern) == 0:
+            raise Exception("Pattern must not be empty")
+        if len(words_to_find) == 0:
+            raise Exception("Text sequence for searching must not be empty")
+        if len(elements) == 0:
+            raise Exception("Size elements must not be null")
+        self.pattern = pattern
+        self.words_to_find = self._split_words_to_find_by_pattern(words_to_find)
+        self.elements = elements
+
+    def matching_results(self) -> List[int]:
+        return [element.element_id for element in self.elements
+                if (any(term in element.name for term in self.words_to_find))]
+
+    def _split_words_to_find_by_pattern(self, words_to_find):
+        return re.split(self.pattern, words_to_find)
 
 
 # ---------------------------------------------------------------
@@ -135,4 +199,6 @@ def get_name(element: int) -> str:
 
 
 if __name__ == '__main__':
+    init_and_setup_logger()
+
     main(message=get_message_lang())
