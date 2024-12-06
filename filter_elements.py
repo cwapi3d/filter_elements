@@ -10,29 +10,30 @@ __license__ = "MIT License Agreement"
 __version__ = "1.0"
 __status__ = "Release"
 
-import dataclasses
+import logging
 import os
 import sys
-from typing import List
-import logging
-import utility_controller as uc
-import element_controller as ec
-import attribute_controller as ac
-import re
-import visualization_controller as vc
-import tkinter
-import tkinter.messagebox
 from collections import defaultdict
+from typing import List, Type
 
+import attribute_controller as ac
+import element_controller as ec
+import utility_controller as uc
+import visualization_controller as vc
+
+from message_dto import MessageDTO
 
 os.environ['PYTHONPATH'] = os.pathsep.join([
     os.path.join(os.path.dirname(__file__), '.venv', 'Lib', 'site-packages'),
-    os.path.join(os.path.dirname(__file__), 'src'),
-    os.path.dirname(__file__),
+    # os.path.dirname(__file__),
     os.path.join(uc.get_plugin_path()),
 ])
 
 sys.path.extend(os.environ['PYTHONPATH'].split(os.pathsep))
+
+from FilterElements import FilterElements
+from language_controller import LanguageController, get_language_controller
+from NameFilter import NameFilter
 
 handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter("{asctime} {levelname}: {message}", "%d.%m.%Y %H:%M:%S", style="{")
@@ -42,7 +43,18 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
-def main(message):
+class FilterElementController:
+    def __init__(self, language_controller: LanguageController):
+        self._language_controller = language_controller
+
+    def find_matching_element_names_by_user_query(self) -> List[int]:
+        pass
+
+    def activate_resulting_elements(self):
+        pass
+
+
+def find_matching_element_names_by_user_query(message: MessageDTO):
     element_ids = query_elements_to_filter(message)
 
     if list_is_empty(element_ids):
@@ -51,45 +63,42 @@ def main(message):
     set_elements_state_inactive_and_refresh_display(element_ids)
     uc.disable_auto_display_refresh()
 
-    names = get_element_names(element_ids)
-
-    elements = list()
-
-    find_word = uc.get_user_string(message[2])
-    if find_word == '':
+    try:
+        query = query_filter_text_fragments(message)
+    except RuntimeError:
+        logger.error("no text was entered in user query")
         return
 
-    search = re.split(', |;|,|\s', find_word)
-    search = list(map(str.lower, search))
-
     elements_to_filter = FilterElements(element_ids).element_records
+
     word_splitting_pattern = ', |;|,|\s'
-    name_filter = NameFilter(word_splitting_pattern, find_word, elements_to_filter)
+    name_filter = NameFilter(word_splitting_pattern, query, elements_to_filter)
     results = name_filter.matching_results()
 
-    for n, e in zip(names, element_ids):
-        if any(x in n for x in search):
-            elements.append(e)
-        else:
-            continue
-
-    if not elements:
-        warning_msg(message[3])
-
     uc.enable_auto_display_refresh()
-    activate_matching_elements(elements)
-    info_msg(f"{len(elements)} {message[4]} ")
+    activate_matching_elements(results)
 
-    return None
+    return
+
+
+def query_filter_text_fragments(message):
+    find_word = uc.get_user_string(message[2])
+    if len(find_word) == 0:
+        raise RuntimeError("Query must not be empty")
+
+    return find_word
 
 
 def query_elements_to_filter(message):
     active_element_ids = ec.get_active_identifiable_element_ids()
     visible_element_ids = ec.get_visible_identifiable_element_ids()
-    if (list_is_empty(active_element_ids) and
+    if (not list_is_empty(active_element_ids) and
             not list_length_identical(active_element_ids, visible_element_ids)):
+        logger.info(
+            f"{len(active_element_ids)} of {len(visible_element_ids)} elements state is active")
         element_ids = get_elements_by_user_decision(active_element_ids, message, visible_element_ids)
     else:
+        logger.info(f"{len(visible_element_ids)} are visible")
         element_ids = visible_element_ids
     return element_ids
 
@@ -104,11 +113,12 @@ def get_element_names(element_ids: List[int]):
 
 def set_elements_state_inactive_and_refresh_display(element_ids: List[int]):
     if not list_is_empty(element_ids):
+        logger.info(f"{len(element_ids)} elements state changed to inactive")
         vc.set_inactive(element_ids)
 
 
 def get_elements_by_user_decision(active_element_ids: List[int], message, visible_element_ids: List[int]):
-    var: bool = uc.get_user_bool(message[1], True)
+    var = uc.get_user_bool(message[1], True)
     element_ids = active_element_ids if var else visible_element_ids
     return element_ids
 
@@ -125,87 +135,10 @@ def list_length_identical(fst_element_list: List[int], snd_element_list: List[in
     return len(fst_element_list) == len(snd_element_list)
 
 
-@dataclasses.dataclass
-class ElementRecord:
-    element_id: int
-    name: str
-
-
-class FilterElements:
-    def __init__(self, elements: List[int]):
-        if len(elements) == 0:
-            raise Exception("Size elements must not be null")
-
-        self._element_records: List[ElementRecord] = self._create_records(elements)
-
-    @staticmethod
-    def _create_records(elements: List[int]) -> List[ElementRecord]:
-        return list(
-            map(lambda element_id: ElementRecord(element_id, ac.get_name(element_id)), elements))
-
-    @property
-    def element_records(self) -> List[ElementRecord]:
-        return self._element_records
-
-
-class NameFilter:
-    def __init__(self, pattern, words_to_find: str, elements: List[ElementRecord]):
-        if len(pattern) == 0:
-            raise Exception("Pattern must not be empty")
-        if len(words_to_find) == 0:
-            raise Exception("Text sequence for searching must not be empty")
-        if len(elements) == 0:
-            raise Exception("Size elements must not be null")
-        self.pattern = pattern
-        self.words_to_find = self._split_words_to_find_by_pattern(words_to_find)
-        self.elements = elements
-
-    def matching_results(self) -> List[int]:
-        return [element.element_id for element in self.elements
-                if (any(term in element.name for term in self.words_to_find))]
-
-    def _split_words_to_find_by_pattern(self, words_to_find):
-        return re.split(self.pattern, words_to_find)
-
-
 # ---------------------------------------------------------------
-def get_message_lang():
-    # language dictionary
-    language_dict = defaultdict(list)
-    language_dict['en'] = ['No elements are active/visible!', 'Should only active elements be considered?',
-                           'Enter search term', 'Names not found', ' Elements found']
-    language_dict['de'] = ['Es sind keine Elemente aktiv/sichtbar!',
-                           'Sollen nur aktive Elemente berücksichtigt werden?', 'Suchbegriff eingeben',
-                           'Namen nicht gefunden!', ' Elemente gefunden']
-    language_dict['fr'] = ["Aucun élément n'est actif/visible !",
-                           'Seuls les éléments actifs doivent-ils être pris en compte ?', 'Saisir un mot-clé',
-                           'Noms non trouvés', ' Éléments trouvés']
-    language_dict['es'] = ['¡No hay elementos activos/visibles!', '¿Sólo se deben considerar los elementos activos?',
-                           'Introduzca el término de búsqueda', 'Nombres no encontrados', ' Elementos encontrados']
-
-    language = uc.get_language()
-    if language == 'de':
-        return language_dict['de']
-    elif language == 'fr':
-        return language_dict['fr']
-    elif language == 'es':
-        return language_dict['es']
-    else:
-        return language_dict['en']
-
-
-def warning_msg(message):
-    root = tkinter.Tk()
-    root.withdraw()
-    tkinter.messagebox.showerror(title="Achtung", message=message)
-    root.destroy()
-
-
-def info_msg(message):
-    root = tkinter.Tk()
-    root.withdraw()
-    tkinter.messagebox.showinfo(title="Information", message=message)
-    root.destroy()
+def get_messages_based_on_user_language() -> MessageDTO:
+    language_controller = get_language_controller()
+    return language_controller.get_messages()
 
 
 def get_name(element: int) -> str:
@@ -214,6 +147,4 @@ def get_name(element: int) -> str:
 
 
 if __name__ == '__main__':
-    init_and_setup_logger()
-
-    main(message=get_message_lang())
+    find_matching_element_names_by_user_query(get_messages_based_on_user_language())

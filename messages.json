@@ -1,0 +1,30 @@
+{
+  "en": {
+    "no_elements_active": "No elements are active/visible!",
+    "consider_active_elements": "Should only active elements be considered?",
+    "enter_search_term": "Enter search term",
+    "names_not_found": "Names not found",
+    "elements_found": "Elements found"
+  },
+  "de": {
+    "no_elements_active": "Es sind keine Elemente aktiv/sichtbar!",
+    "consider_active_elements": "Sollen nur aktive Elemente berücksichtigt werden?",
+    "enter_search_term": "Suchbegriff eingeben",
+    "names_not_found": "Namen nicht gefunden!",
+    "elements_found": "Elemente gefunden"
+  },
+  "fr": {
+    "no_elements_active": "Aucun élément n'est actif/visible !",
+    "consider_active_elements": "Seuls les éléments actifs doivent-ils être pris en compte ?",
+    "enter_search_term": "Saisir un mot-clé",
+    "names_not_found": "Noms non trouvés",
+    "elements_found": "Éléments trouvés"
+  },
+  "es": {
+    "no_elements_active": "¡No hay elementos activos/visibles!",
+    "consider_active_elements": "¿Sólo se deben considerar los elementos activos?",
+    "enter_search_term": "Introduzca el término de búsqueda",
+    "names_not_found": "Nombres no encontrados",
+    "elements_found": "Elementos encontrados"
+  }
+}
