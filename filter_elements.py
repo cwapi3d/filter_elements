@@ -13,15 +13,12 @@ __status__ = "Release"
 import logging
 import os
 import sys
-from collections import defaultdict
-from typing import List, Type
+from typing import List
 
 import attribute_controller as ac
 import element_controller as ec
 import utility_controller as uc
 import visualization_controller as vc
-
-from message_dto import MessageDTO
 
 os.environ['PYTHONPATH'] = os.pathsep.join([
     os.path.join(os.path.dirname(__file__), '.venv', 'Lib', 'site-packages'),
@@ -32,8 +29,9 @@ os.environ['PYTHONPATH'] = os.pathsep.join([
 sys.path.extend(os.environ['PYTHONPATH'].split(os.pathsep))
 
 from FilterElements import FilterElements
-from language_controller import LanguageController, get_language_controller
+from language_controller import get_language_controller
 from NameFilter import NameFilter
+from message_dto import MessageDTO
 
 handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter("{asctime} {levelname}: {message}", "%d.%m.%Y %H:%M:%S", style="{")
@@ -43,88 +41,82 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
-class FilterElementController:
-    def __init__(self, language_controller: LanguageController):
-        self._language_controller = language_controller
-
-    def find_matching_element_names_by_user_query(self) -> List[int]:
-        pass
-
-    def activate_resulting_elements(self):
-        pass
-
-
 def find_matching_element_names_by_user_query(message: MessageDTO):
-    element_ids = query_elements_to_filter(message)
+    element_ids = get_elements_to_filter(message)
 
     if list_is_empty(element_ids):
+        uc.print_error(message.no_elements_active)
         return
 
-    set_elements_state_inactive_and_refresh_display(element_ids)
+    deactivate_elements_and_refresh_display(element_ids)
     uc.disable_auto_display_refresh()
 
     try:
-        query = query_filter_text_fragments(message)
+        query = get_user_query(message)
     except RuntimeError:
         logger.error("no text was entered in user query")
         return
 
-    elements_to_filter = FilterElements(element_ids).element_records
-
-    word_splitting_pattern = ', |;|,|\s'
-    name_filter = NameFilter(word_splitting_pattern, query, elements_to_filter)
-    results = name_filter.matching_results()
+    results = filter_elements_by_query(element_ids, query)
+    logger.info(f"Found {len(results)} elements")
 
     uc.enable_auto_display_refresh()
-    activate_matching_elements(results)
+    activate_elements(results)
+    inform_user_about_result(message, results)
 
     return
 
 
-def query_filter_text_fragments(message):
-    find_word = uc.get_user_string(message[2])
-    if len(find_word) == 0:
+def inform_user_about_result(message: MessageDTO, results: List[int]):
+    if list_is_empty(results):
+        uc.print_error(message.names_not_found)
+    else:
+        uc.print_error(f"{len(results)} {message.elements_found}")
+
+
+def filter_elements_by_query(element_ids: List[int], query: str) -> List[int]:
+    elements_to_filter = FilterElements(element_ids).element_records
+    logger.info(f"Filtering {len(elements_to_filter)} elements")
+    word_splitting_pattern = ', |;|,|\s'
+    name_filter = NameFilter(word_splitting_pattern, query, elements_to_filter)
+    return name_filter.matching_results()
+
+
+def get_user_query(message: MessageDTO) -> str:
+    query = uc.get_user_string(message.enter_search_term)
+    if not query:
         raise RuntimeError("Query must not be empty")
+    return query
 
-    return find_word
 
-
-def query_elements_to_filter(message):
+def get_elements_to_filter(message):
     active_element_ids = ec.get_active_identifiable_element_ids()
     visible_element_ids = ec.get_visible_identifiable_element_ids()
     if (not list_is_empty(active_element_ids) and
             not list_length_identical(active_element_ids, visible_element_ids)):
         logger.info(
             f"{len(active_element_ids)} of {len(visible_element_ids)} elements state is active")
-        element_ids = get_elements_by_user_decision(active_element_ids, message, visible_element_ids)
+        element_ids = get_elements_based_on_user_decision(active_element_ids, message, visible_element_ids)
     else:
         logger.info(f"{len(visible_element_ids)} are visible")
         element_ids = visible_element_ids
     return element_ids
 
 
-def activate_matching_elements(elements):
+def activate_elements(elements):
     vc.set_active(elements)
 
 
-def get_element_names(element_ids: List[int]):
-    return list(map(get_name, element_ids))
-
-
-def set_elements_state_inactive_and_refresh_display(element_ids: List[int]):
+def deactivate_elements_and_refresh_display(element_ids: List[int]):
     if not list_is_empty(element_ids):
         logger.info(f"{len(element_ids)} elements state changed to inactive")
         vc.set_inactive(element_ids)
 
 
-def get_elements_by_user_decision(active_element_ids: List[int], message, visible_element_ids: List[int]):
-    var = uc.get_user_bool(message[1], True)
-    element_ids = active_element_ids if var else visible_element_ids
-    return element_ids
-
-
-def strings_to_lower(strings: List[str]):
-    return list(map(lambda string: string.lower(), strings))
+def get_elements_based_on_user_decision(active_element_ids: List[int], message: MessageDTO,
+                                        visible_element_ids: List[int]) -> List[int]:
+    consider_active = uc.get_user_bool(message.consider_active_elements, True)
+    return active_element_ids if consider_active else visible_element_ids
 
 
 def list_is_empty(element_list: List[int]):
@@ -135,7 +127,6 @@ def list_length_identical(fst_element_list: List[int], snd_element_list: List[in
     return len(fst_element_list) == len(snd_element_list)
 
 
-# ---------------------------------------------------------------
 def get_messages_based_on_user_language() -> MessageDTO:
     language_controller = get_language_controller()
     return language_controller.get_messages()

@@ -1,3 +1,4 @@
+import os.path
 from typing import Type
 import utility_controller as uc
 from language_strategy import (LanguageStrategy, EnglishLanguageStrategy, GermanLanguageStrategy,
@@ -7,20 +8,23 @@ from message_dto import MessageDTO
 
 
 class LanguageController:
-    def __init__(self, strategy: Type[LanguageStrategy]):
-        self._strategy = strategy()
+    def __init__(self, strategy: LanguageStrategy):
+        self._strategy = strategy
 
     def get_messages(self) -> MessageDTO:
         return self._strategy.get_messages()
 
 
+def path_to_json_file() -> str:
+    return os.path.join(uc.get_plugin_path(), 'messages.json')
+
 def get_language_controller() -> LanguageController:
     language = uc.get_language()
     if language == 'de':
-        return LanguageController(GermanLanguageStrategy)
+        return LanguageController(GermanLanguageStrategy(path_to_json_file()))
     elif language == 'fr':
-        return LanguageController(FrenchLanguageStrategy)
+        return LanguageController(FrenchLanguageStrategy(path_to_json_file()))
     elif language == 'es':
-        return LanguageController(SpanishLanguageStrategy)
+        return LanguageController(SpanishLanguageStrategy(path_to_json_file()))
     else:
-        return LanguageController(EnglishLanguageStrategy)
+        return LanguageController(EnglishLanguageStrategy(path_to_json_file()))

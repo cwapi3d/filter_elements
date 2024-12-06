@@ -1,6 +1,11 @@
+import re
 from typing import List
 
 from ElementRecordDTO import ElementRecordDTO
+
+
+def strings_to_lower(strings: List[str]):
+    return list(map(lambda string: string.lower(), strings))
 
 
 class NameFilter:
@@ -12,12 +17,13 @@ class NameFilter:
         if len(elements) == 0:
             raise RuntimeError("Size elements must not be null")
         self.pattern = pattern
-        self.words_to_find = self._split_words_to_find_by_pattern(words_to_find)
+        split_words = self._split_words_to_find_by_pattern(words_to_find)
+        self.words_to_find = strings_to_lower(split_words)
         self.elements = elements
 
     def matching_results(self) -> List[int]:
         return [element.element_id for element in self.elements
-                if (any(term in element.name for term in self.words_to_find))]
+                if (any(term in element.name.lower() for term in self.words_to_find))]
 
     def _split_words_to_find_by_pattern(self, words_to_find):
         return re.split(self.pattern, words_to_find)
