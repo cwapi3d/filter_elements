@@ -27,7 +27,7 @@ os.environ['PYTHONPATH'] = os.pathsep.join([
 
 sys.path.extend(os.environ['PYTHONPATH'].split(os.pathsep))
 
-from FilterElements import FilterElements
+from element_record_creator import ElementRecordCreator
 from language_controller import get_language_controller
 from NameFilter import NameFilter
 from message_dto import MessageDTO
@@ -74,7 +74,7 @@ def inform_user_about_result(message: MessageDTO, results: List[int]):
 
 
 def filter_elements_by_query(element_ids: List[int], query: str) -> List[int]:
-    elements_to_filter = FilterElements(element_ids).element_records
+    elements_to_filter = ElementRecordCreator(element_ids).element_records
     logger.info(f"Filtering {len(elements_to_filter)} elements")
     word_splitting_pattern = ', |;|,|\s'
     name_filter = NameFilter(word_splitting_pattern, query, elements_to_filter)

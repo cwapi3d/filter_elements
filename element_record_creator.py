@@ -1,10 +1,10 @@
 from typing import List
 import attribute_controller as ac
 
-from ElementRecordDTO import ElementRecordDTO
+from element_dto import ElementRecordDTO
 
 
-class FilterElements:
+class ElementRecordCreator:
     def __init__(self, elements: List[int]):
         if len(elements) == 0:
             raise RuntimeError("Size elements must not be null")

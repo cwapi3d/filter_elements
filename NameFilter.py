@@ -1,7 +1,7 @@
 import re
 from typing import List
 
-from ElementRecordDTO import ElementRecordDTO
+from element_dto import ElementRecordDTO
 
 
 def strings_to_lower(strings: List[str]):
