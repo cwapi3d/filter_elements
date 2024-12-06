@@ -3,7 +3,7 @@
 """filter_elements.py: searches elements for specific terms and activates them """
 
 __author__ = "Michael Brunner"
-__copyright__ = "Copyright 2022, Cadwork Holz AG"
+__copyright__ = "Copyright 2024, Cadwork Holz AG"
 __maintainer__ = "Michael Brunner"
 __email__ = "brunner@cadwork.swiss"
 __license__ = "MIT License Agreement"
