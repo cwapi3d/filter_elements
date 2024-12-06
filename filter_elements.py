@@ -7,7 +7,7 @@ __copyright__ = "Copyright 2022, Cadwork Holz AG"
 __maintainer__ = "Michael Brunner"
 __email__ = "brunner@cadwork.swiss"
 __license__ = "MIT License Agreement"
-__version__ = "1.0"
+__version__ = "1.1.0"
 __status__ = "Release"
 
 import logging
@@ -22,7 +22,6 @@ import visualization_controller as vc
 
 os.environ['PYTHONPATH'] = os.pathsep.join([
     os.path.join(os.path.dirname(__file__), '.venv', 'Lib', 'site-packages'),
-    # os.path.dirname(__file__),
     os.path.join(uc.get_plugin_path()),
 ])
 
@@ -34,7 +33,7 @@ from NameFilter import NameFilter
 from message_dto import MessageDTO
 
 handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter("{asctime} {levelname}: {message}", "%d.%m.%Y %H:%M:%S", style="{")
+formatter = logging.Formatter("{asctime} {filename} {levelname}: {message}", "%d.%m.%Y %H:%M:%S", style="{")
 handler.setFormatter(formatter)
 logger = logging.getLogger(__file__)
 logger.addHandler(handler)
@@ -48,13 +47,13 @@ def find_matching_element_names_by_user_query(message: MessageDTO):
         uc.print_error(message.no_elements_active)
         return
 
-    deactivate_elements_and_refresh_display(element_ids)
     uc.disable_auto_display_refresh()
 
     try:
         query = get_user_query(message)
     except RuntimeError:
         logger.error("no text was entered in user query")
+        uc.print_error(message.enter_search_term)
         return
 
     results = filter_elements_by_query(element_ids, query)
@@ -97,6 +96,7 @@ def get_elements_to_filter(message):
         logger.info(
             f"{len(active_element_ids)} of {len(visible_element_ids)} elements state is active")
         element_ids = get_elements_based_on_user_decision(active_element_ids, message, visible_element_ids)
+        deactivate_elements_and_refresh_display(active_element_ids)
     else:
         logger.info(f"{len(visible_element_ids)} are visible")
         element_ids = visible_element_ids
